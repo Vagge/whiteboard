@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+        <title>Canvas</title>
+    </head>
+<body>
+    <h5><%= board.title %></h5> 
+    <form id="uploadbanner" enctype="multipart/form-data" method="post" action="/whiteboard">
+    <label for = "title"> Title </label>
+   <input id="title" name="title" type="text" />
+   <input id="whiteboardImage" name="whiteboardImage" type="file" />
+   <input type="submit" value="submit" id="submit" />
+</form>
+<hr>
+<button type='button' id='btnSave'>Save</button>
+<hr>
+<canvas id="canvas" width="400" height="250" style="border: 2px solid #000; float: left;"></canvas>
+<img id='img' src="data:image/<%=board.img.contentType%>;base64, 
+                     <%=board.img.data.toString('base64')%>" width="400" height="200" onclick="imgHandler('<%= board.title %>')">  
+<img src="" id="imgC" style="float: left; border: 2px solid #00f; margin-left: 10px">
+
+<script>
+
+    var socket = io();
+
+    const btnSave = document.querySelector("#btnSave");
+    const imgC = document.querySelector("#imgC");
+    const canvas = document.querySelector("#canvas");
+    const ctx = canvas.getContext('2d');
+
+
+    window.addEventListener("load", ()=>{
+        const canvas = document.querySelector("#canvas");
+        const context = canvas.getContext('2d');
+        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+        const img = document.querySelector('#img');
+        context.drawImage(img, 20, 20);
+        let paint = false;
+
+        function startPos()
+        {
+            paint = true;
+        }
+        function endPos()
+        {
+            paint = false;
+            context.beginPath();
+        }
+
+        function draw(e)
+        {
+            if(!paint)
+            {
+                return;
+            }
+            context.lineWidth = 8;
+            context.lineCap = 'round';
+            context.lineTo(e.clientX, e.clientY);
+            context.stroke(); 
+            context.beginPath();
+            context.moveTo(e.clientX, e.clientY);
+            var x = e.clientX;
+            var y = e.clientY;
+            var type = e.type;
+            socket.emit('drawClick', {
+                    x: x,
+                    y: y,
+                    type: type
+                    });
+        }
+
+
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endPos);
+        canvas.addEventListener('mousedown', startPos);
+        btnSave.addEventListener("click", ()=>
+        { 
+            const dataUri = canvas.toDataURL();
+            const a = document.createElement("a");
+            document.body.appendChild(a);
+            a.href = dataUri;
+            a.download = "canvas_image.png";
+            a.click();
+            document.body.removeChild(a);
+        });
+    });
+    function drawServer(x, y, type)
+        {
+            const context = canvas.getContext('2d');
+            console.log(x);
+            context.lineWidth = 8;
+            context.lineCap = 'round';
+            context.lineTo(x, y);
+            context.stroke(); 
+            context.beginPath();
+            context.moveTo(x, y);
+        };
+
+    socket.on('draw', function(data) {
+      return drawServer(data.x, data.y, data.type);
+    });
+
+
+</script>
+</body>
+</style>
+</html>
+
